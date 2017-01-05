@@ -166,6 +166,7 @@ public class M2ReleaseStep extends AbstractStepImpl {
             arguments.setHudsonUserName(Hudson.getAuthentication().getName());
 
             List<Action> actions = new ArrayList<>();
+            actions.add(new M2ReleaseTriggerAction(getContext()));
             actions.add(parameters);
             actions.add(arguments);
             actions.add(new CauseAction(new ReleaseCause()));
