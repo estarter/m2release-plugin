@@ -6,11 +6,13 @@ import java.util.logging.Logger;
 
 import javax.annotation.Nonnull;
 
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
 import org.jenkinsci.plugins.workflow.util.StaplerReferer;
+import org.jvnet.hudson.plugins.m2release.M2ReleaseAction;
 import org.jvnet.hudson.plugins.m2release.M2ReleaseArgumentsAction;
 import org.jvnet.hudson.plugins.m2release.ReleaseCause;
 import org.kohsuke.accmod.Restricted;
@@ -25,6 +27,7 @@ import com.google.inject.Inject;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.console.ModelHyperlinkNote;
+import hudson.maven.MavenModuleSet;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.AutoCompletionCandidates;
@@ -103,22 +106,29 @@ public class M2ReleaseStep extends AbstractStepImpl {
                 throw new AbortException("Job name is not defined.");
             }
 
-            final AbstractProject project = Jenkins.getActiveInstance()
-                                                   .getItem(step.getJob(), invokingRun.getParent(), AbstractProject.class);
+            final MavenModuleSet project = Jenkins.getActiveInstance()
+                                                  .getItem(step.getJob(), invokingRun.getParent(), MavenModuleSet.class);
             if (project == null) {
                 throw new AbortException("No parametrized job named " + step.getJob() + " found");
             }
             listener.getLogger().println("Releasing project: " + ModelHyperlinkNote.encodeTo(project));
 
-            List<ParameterValue> values = new ArrayList<ParameterValue>();
+            List<ParameterValue> values = new ArrayList<>();
 
             // schedule release build
             ParametersAction parameters = new ParametersAction(values);
 
             M2ReleaseArgumentsAction arguments = new M2ReleaseArgumentsAction();
+            M2ReleaseAction releaseAction = new M2ReleaseAction(project, false, false, false);
             arguments.setDryRun(step.isDryRun());
             arguments.setReleaseVersion(step.getReleaseVersion());
+            if (StringUtils.isBlank(arguments.getReleaseVersion())) {
+                arguments.setReleaseVersion(releaseAction.computeReleaseVersion());
+            }
             arguments.setDevelopmentVersion(step.getDevelopmentVersion());
+            if (StringUtils.isBlank(arguments.getDevelopmentVersion())) {
+                arguments.setDevelopmentVersion(releaseAction.computeNextVersion());
+            }
 
             List<Action> actions = new ArrayList<>();
             actions.add(new M2ReleaseTriggerAction(getContext()));
