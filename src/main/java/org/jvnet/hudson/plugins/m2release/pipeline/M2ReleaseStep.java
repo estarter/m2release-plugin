@@ -34,6 +34,7 @@ import hudson.console.ModelHyperlinkNote;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.BooleanParameterDefinition;
 import hudson.model.BuildableItemWithBuildWrappers;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -45,6 +46,7 @@ import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.Run;
+import hudson.model.StringParameterDefinition;
 import hudson.model.TaskListener;
 import hudson.model.queue.QueueTaskFuture;
 import jenkins.model.Jenkins;
@@ -222,23 +224,22 @@ public class M2ReleaseStep extends AbstractStepImpl {
                     if (wrapper == null) {
                         throw new IllegalArgumentException("Job doesn't have release plugin configuration");
                     }
-                    /* TODO
-                    List<ParameterDefinition> parameterDefinitions = wrapper.getParameterDefinitions();
-                    if (parameterDefinitions != null) {
+
                         List<ParameterValue> values = new ArrayList<>();
                         for (Object o : params) {
                             JSONObject jo = (JSONObject) o;
                             String name = jo.getString("name");
-                            for (ParameterDefinition pd : parameterDefinitions) {
-                                if (name.equals(pd.getName())) {
-                                    ParameterValue parameterValue = pd.createValue(req, jo);
-                                    values.add(parameterValue);
-                                }
+                            LOGGER.info(jo.toString());
+                            ParameterDefinition pd;
+                            if ("MVN_ISDRYRUN".equals(name)) {
+                                pd = new BooleanParameterDefinition(name, false, "isDryRun");
+                            } else {
+                                pd = new StringParameterDefinition(name, "");
                             }
+                            ParameterValue parameterValue = pd.createValue(req, jo);
+                            values.add(parameterValue);
                         }
                         step.setParameters(values);
-                    }
-                    */
                 } else {
                     throw new IllegalArgumentException("Wrong job type: " + project.getClass().getName());
                 }
