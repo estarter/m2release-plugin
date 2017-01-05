@@ -17,6 +17,7 @@ import org.jenkinsci.plugins.workflow.util.StaplerReferer;
 import org.jvnet.hudson.plugins.m2release.M2ReleaseArgumentsAction;
 import org.jvnet.hudson.plugins.m2release.M2ReleaseBadgeAction;
 import org.jvnet.hudson.plugins.m2release.M2ReleaseBuildWrapper;
+import org.jvnet.hudson.plugins.m2release.ReleaseCause;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.stapler.AncestorInPath;
@@ -35,11 +36,14 @@ import hudson.model.Action;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildableItemWithBuildWrappers;
 import hudson.model.Cause;
+import hudson.model.CauseAction;
 import hudson.model.Descriptor;
+import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.queue.QueueTaskFuture;
@@ -129,16 +133,42 @@ public class M2ReleaseStep extends AbstractStepImpl {
             }
             listener.getLogger().println("Releasing project: " + ModelHyperlinkNote.encodeTo(project));
 
+
+            boolean isDryRun = false;
+            String releaseVersion = "1.0";
+            String developmentVersion = "1.1";
+            boolean closeNexusStage = false;
+            String repoDescription = "repo desc";
+            String scmUsername = "username";
+            String scmPassword = "password";
+            String scmTag = "scm_tag";
+            String scmCommentPrefix = "comment prefix";
+            boolean appendHusonUserName = false;
+
+            List<ParameterValue> values = new ArrayList<ParameterValue>();
+
+            // schedule release build
+            ParametersAction parameters = new ParametersAction(values);
+
+            M2ReleaseArgumentsAction arguments = new M2ReleaseArgumentsAction();
+            arguments.setDryRun(isDryRun);
+
+            arguments.setReleaseVersion(releaseVersion);
+            arguments.setDevelopmentVersion(developmentVersion);
+
+            arguments.setCloseNexusStage(closeNexusStage);
+            arguments.setRepoDescription(repoDescription);
+            arguments.setScmUsername(scmUsername);
+            arguments.setScmPassword(scmPassword);
+            arguments.setScmTagName(scmTag);
+            arguments.setScmCommentPrefix(scmCommentPrefix);
+            arguments.setAppendHusonUserName(appendHusonUserName);
+            arguments.setHudsonUserName(Hudson.getAuthentication().getName());
+
             List<Action> actions = new ArrayList<>();
-            StepContext context = getContext();
-            actions.add(new M2ReleaseTriggerAction(context));
-            LOGGER.log(Level.FINER, "scheduling a release of {0} from {1}", new Object[] { project, context });
-            M2ReleaseArgumentsAction args = new M2ReleaseArgumentsAction();
-            args.setDevelopmentVersion("1.0-SNAPSHOT");
-            args.setReleaseVersion("0.9");
-            args.setDryRun(false);
-            actions.add(args);
-            actions.add(new M2ReleaseBadgeAction());
+            actions.add(parameters);
+            actions.add(arguments);
+            actions.add(new CauseAction(new ReleaseCause()));
 
             QueueTaskFuture<?> task = project.scheduleBuild2(0, new Cause.UpstreamCause(invokingRun), actions);
             if (task == null) {
